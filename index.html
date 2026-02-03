@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>富文本转 Markdown</title>
+    <title>富文本 ⇄ Markdown 双向转换</title>
     <link href="https://unpkg.com/@wangeditor/editor@latest/dist/css/style.css" rel="stylesheet">
     <style>
         * {
@@ -38,6 +38,34 @@
         header p {
             font-size: 1.1rem;
             opacity: 0.9;
+        }
+
+        .mode-switch {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .mode-btn {
+            padding: 10px 24px;
+            border: 2px solid white;
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            cursor: pointer;
+            font-size: 1rem;
+            font-weight: 500;
+            transition: all 0.3s;
+        }
+
+        .mode-btn:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+
+        .mode-btn.active {
+            background: white;
+            color: #667eea;
         }
 
         .editor-container {
@@ -122,7 +150,7 @@
             margin: 5px 0;
         }
 
-        #markdown {
+        #markdownOutput, #markdownInput {
             flex: 1;
             padding: 20px;
             border: none;
@@ -132,6 +160,115 @@
             resize: none;
             background: #f8f9fa;
             color: #333;
+        }
+
+        #markdownInput:focus {
+            outline: 2px solid #667eea;
+            outline-offset: -2px;
+        }
+
+        #preview-container {
+            flex: 1;
+            padding: 20px;
+            overflow-y: auto;
+            background: white;
+        }
+
+        #preview-container h1,
+        #preview-container h2,
+        #preview-container h3,
+        #preview-container h4,
+        #preview-container h5,
+        #preview-container h6 {
+            margin: 16px 0 8px 0;
+            font-weight: 600;
+        }
+
+        #preview-container p {
+            margin: 8px 0;
+            line-height: 1.6;
+        }
+
+        #preview-container ul,
+        #preview-container ol {
+            margin: 8px 0;
+            padding-left: 24px;
+        }
+
+        #preview-container li {
+            margin: 4px 0;
+        }
+
+        #preview-container code {
+            background: #f4f4f4;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 0.9em;
+        }
+
+        #preview-container pre {
+            background: #f4f4f4;
+            padding: 12px;
+            border-radius: 6px;
+            overflow-x: auto;
+            margin: 12px 0;
+        }
+
+        #preview-container pre code {
+            background: none;
+            padding: 0;
+        }
+
+        #preview-container blockquote {
+            border-left: 4px solid #667eea;
+            padding-left: 16px;
+            margin: 12px 0;
+            color: #666;
+        }
+
+        #preview-container table {
+            border-collapse: collapse;
+            width: 100%;
+            margin: 12px 0;
+        }
+
+        #preview-container table th,
+        #preview-container table td {
+            border: 1px solid #ddd;
+            padding: 8px 12px;
+            text-align: left;
+        }
+
+        #preview-container table th {
+            background: #f8f9fa;
+            font-weight: 600;
+        }
+
+        #preview-container img {
+            max-width: 100%;
+            height: auto;
+        }
+
+        #preview-container a {
+            color: #667eea;
+            text-decoration: none;
+        }
+
+        #preview-container a:hover {
+            text-decoration: underline;
+        }
+
+        .direction-indicator {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: #667eea;
+            font-weight: 600;
+        }
+
+        .arrow {
+            font-size: 1.5rem;
         }
 
         footer {
@@ -159,92 +296,76 @@
 <body>
     <div class="container">
         <header>
-            <h1>📝 富文本转 Markdown</h1>
-            <p>在左侧编辑或粘贴富文本内容，右侧实时显示 Markdown 格式</p>
+            <h1>📝 富文本 ⇄ Markdown 双向转换</h1>
+            <p>选择转换方向，实时预览转换结果</p>
         </header>
 
+        <div class="mode-switch">
+            <button class="mode-btn active" data-mode="toMarkdown">
+                富文本 → Markdown
+            </button>
+            <button class="mode-btn" data-mode="toRichText">
+                Markdown → 富文本
+            </button>
+        </div>
+
         <div class="editor-container">
-            <div class="panel">
+            <div class="panel" id="leftPanel">
                 <div class="panel-header">
-                    <h2>富文本编辑器</h2>
-                    <button id="clearBtn" class="btn btn-secondary">清空</button>
+                    <div>
+                        <h2 id="leftTitle">富文本编辑器</h2>
+                        <div class="direction-indicator" id="leftIndicator" style="display: none;">
+                            <span class="arrow">✏️</span>
+                            <span>编辑区</span>
+                        </div>
+                    </div>
+                    <button id="clearLeftBtn" class="btn btn-secondary">清空</button>
                 </div>
-                <div class="editor-wrapper">
+                <div class="editor-wrapper" id="richTextWrapper">
                     <div id="editor-toolbar"></div>
                     <div id="editor-container"></div>
                 </div>
+                <textarea id="markdownInput" style="display: none;"></textarea>
             </div>
 
-            <div class="panel">
+            <div class="panel" id="rightPanel">
                 <div class="panel-header">
-                    <h2>Markdown 输出</h2>
-                    <button id="copyBtn" class="btn btn-primary">复制</button>
+                    <div>
+                        <h2 id="rightTitle">Markdown 输出</h2>
+                        <div class="direction-indicator" id="rightIndicator" style="display: none;">
+                            <span class="arrow">👁️</span>
+                            <span>预览区</span>
+                        </div>
+                    </div>
+                    <button id="copyRightBtn" class="btn btn-primary">复制</button>
                 </div>
-                <textarea id="markdown" readonly></textarea>
+                <textarea id="markdownOutput" readonly></textarea>
+                <div class="editor-wrapper" id="richTextPreview" style="display: none;">
+                    <div id="preview-container"></div>
+                </div>
             </div>
         </div>
 
         <footer>
-            <p>支持粗体、斜体、标题、列表、链接、图片等常见格式</p>
+            <p>支持粗体、斜体、标题、列表、链接、图片、代码块、表格等常见格式</p>
         </footer>
     </div>
 
     <script src="https://unpkg.com/@wangeditor/editor@latest/dist/index.js"></script>
     <script src="https://unpkg.com/turndown/dist/turndown.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked@11.1.1/marked.min.js"></script>
     <script>
+        // 等待所有库加载完成
+        window.addEventListener('load', function() {
+            initApp();
+        });
+
+        function initApp() {
         const { createEditor, createToolbar } = window.wangEditor;
 
-        // 编辑器配置
-        const editorConfig = {
-            placeholder: '在这里输入或粘贴富文本内容...',
-            onChange(editor) {
-                convertToMarkdown();
-            }
-        };
-
-        // 创建编辑器
-        const editor = createEditor({
-            selector: '#editor-container',
-            html: '',
-            config: editorConfig,
-            mode: 'default'
-        });
-
-        // 工具栏配置
-        const toolbarConfig = {
-            toolbarKeys: [
-                'headerSelect',
-                '|',
-                'bold',
-                'italic',
-                'underline',
-                'through',
-                'clearStyle',
-                '|',
-                'bulletedList',
-                'numberedList',
-                'todo',
-                '|',
-                'blockquote',
-                'code',
-                'codeBlock',
-                '|',
-                'insertLink',
-                'insertImage',
-                'insertTable',
-                '|',
-                'undo',
-                'redo'
-            ]
-        };
-
-        // 创建工具栏
-        const toolbar = createToolbar({
-            editor,
-            selector: '#editor-toolbar',
-            config: toolbarConfig,
-            mode: 'default'
-        });
+        let currentMode = 'toMarkdown';
+        let editor, toolbar;
+        let isUpdating = false;
 
         // 初始化 Turndown（HTML 转 Markdown）
         const turndownService = new TurndownService({
@@ -252,47 +373,209 @@
             codeBlockStyle: 'fenced'
         });
 
-        const markdownTextarea = document.getElementById('markdown');
-        const copyBtn = document.getElementById('copyBtn');
-        const clearBtn = document.getElementById('clearBtn');
+        // Markdown 转 HTML 函数
+        function parseMarkdown(markdown) {
+            if (typeof marked === 'function') {
+                // 旧版本 marked
+                return marked(markdown);
+            } else if (marked && typeof marked.parse === 'function') {
+                // 新版本 marked
+                return marked.parse(markdown);
+            } else {
+                console.error('marked 库未正确加载');
+                return markdown;
+            }
+        }
 
-        // 转换函数
+        // DOM 元素
+        const richTextWrapper = document.getElementById('richTextWrapper');
+        const richTextPreview = document.getElementById('richTextPreview');
+        const markdownInput = document.getElementById('markdownInput');
+        const markdownOutput = document.getElementById('markdownOutput');
+        const leftTitle = document.getElementById('leftTitle');
+        const rightTitle = document.getElementById('rightTitle');
+        const copyRightBtn = document.getElementById('copyRightBtn');
+        const clearLeftBtn = document.getElementById('clearLeftBtn');
+        const modeBtns = document.querySelectorAll('.mode-btn');
+
+        // 创建富文本编辑器
+        function createRichTextEditor() {
+            const editorConfig = {
+                placeholder: '在这里输入或粘贴富文本内容...',
+                onChange(editor) {
+                    if (!isUpdating && currentMode === 'toMarkdown') {
+                        convertToMarkdown();
+                    }
+                }
+            };
+
+            editor = createEditor({
+                selector: '#editor-container',
+                html: '',
+                config: editorConfig,
+                mode: 'default'
+            });
+
+            const toolbarConfig = {
+                toolbarKeys: [
+                    'headerSelect',
+                    '|',
+                    'bold',
+                    'italic',
+                    'underline',
+                    'through',
+                    'clearStyle',
+                    '|',
+                    'bulletedList',
+                    'numberedList',
+                    'todo',
+                    '|',
+                    'blockquote',
+                    'code',
+                    'codeBlock',
+                    '|',
+                    'insertLink',
+                    'insertImage',
+                    'insertTable',
+                    '|',
+                    'undo',
+                    'redo'
+                ]
+            };
+
+            toolbar = createToolbar({
+                editor,
+                selector: '#editor-toolbar',
+                config: toolbarConfig,
+                mode: 'default'
+            });
+        }
+
+        // 富文本转 Markdown
         function convertToMarkdown() {
             const html = editor.getHtml();
             const markdown = turndownService.turndown(html);
-            markdownTextarea.value = markdown;
+            markdownOutput.value = markdown;
+        }
+
+        // Markdown 转富文本
+        function convertToRichText() {
+            if (isUpdating) return;
+            const markdown = markdownInput.value;
+            const html = parseMarkdown(markdown);
+            document.getElementById('preview-container').innerHTML = html;
+        }
+
+        // 切换模式
+        function switchMode(mode) {
+            currentMode = mode;
+            isUpdating = true;
+
+            modeBtns.forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.mode === mode);
+            });
+
+            if (mode === 'toMarkdown') {
+                // 富文本 → Markdown 模式
+                leftTitle.textContent = '富文本编辑器';
+                rightTitle.textContent = 'Markdown 输出';
+                
+                richTextWrapper.style.display = 'flex';
+                markdownInput.style.display = 'none';
+                markdownOutput.style.display = 'block';
+                richTextPreview.style.display = 'none';
+                
+                markdownOutput.readOnly = true;
+                copyRightBtn.textContent = '复制';
+                
+                // 如果有 Markdown 内容，转换为富文本
+                if (markdownInput.value) {
+                    const html = parseMarkdown(markdownInput.value);
+                    editor.setHtml(html);
+                }
+                
+                convertToMarkdown();
+            } else {
+                // Markdown → 富文本模式
+                leftTitle.textContent = 'Markdown 编辑器';
+                rightTitle.textContent = '富文本预览';
+                
+                richTextWrapper.style.display = 'none';
+                markdownInput.style.display = 'block';
+                markdownOutput.style.display = 'none';
+                richTextPreview.style.display = 'flex';
+                
+                copyRightBtn.textContent = '复制 HTML';
+                
+                // 如果有富文本内容，转换为 Markdown
+                if (editor.getHtml()) {
+                    const markdown = turndownService.turndown(editor.getHtml());
+                    markdownInput.value = markdown;
+                }
+                
+                convertToRichText();
+            }
+
+            setTimeout(() => {
+                isUpdating = false;
+            }, 100);
         }
 
         // 复制按钮
-        copyBtn.addEventListener('click', async () => {
-            const markdown = markdownTextarea.value;
+        copyRightBtn.addEventListener('click', async () => {
+            let content;
+            if (currentMode === 'toMarkdown') {
+                content = markdownOutput.value;
+            } else {
+                content = document.getElementById('preview-container').innerHTML;
+            }
             
             try {
-                await navigator.clipboard.writeText(markdown);
-                copyBtn.textContent = '✓ 已复制';
-                copyBtn.style.background = '#28a745';
+                await navigator.clipboard.writeText(content);
+                const originalText = copyRightBtn.textContent;
+                copyRightBtn.textContent = '✓ 已复制';
+                copyRightBtn.style.background = '#28a745';
                 
                 setTimeout(() => {
-                    copyBtn.textContent = '复制';
-                    copyBtn.style.background = '#667eea';
+                    copyRightBtn.textContent = originalText;
+                    copyRightBtn.style.background = '#667eea';
                 }, 2000);
             } catch (err) {
-                // 降级方案
-                markdownTextarea.select();
-                document.execCommand('copy');
-                copyBtn.textContent = '✓ 已复制';
+                alert('复制失败，请手动复制');
             }
         });
 
         // 清空按钮
-        clearBtn.addEventListener('click', () => {
-            editor.clear();
-            markdownTextarea.value = '';
+        clearLeftBtn.addEventListener('click', () => {
+            if (currentMode === 'toMarkdown') {
+                editor.clear();
+                markdownOutput.value = '';
+            } else {
+                markdownInput.value = '';
+                document.getElementById('preview-container').innerHTML = '';
+            }
         });
 
+        // 模式切换按钮
+        modeBtns.forEach(btn => {
+            btn.addEventListener('click', () => {
+                switchMode(btn.dataset.mode);
+            });
+        });
+
+        // Markdown 输入监听
+        markdownInput.addEventListener('input', () => {
+            if (!isUpdating && currentMode === 'toRichText') {
+                convertToRichText();
+            }
+        });
+
+        // 初始化
+        createRichTextEditor();
+
         // 初始示例内容
-        const sampleContent = `<h1>欢迎使用富文本转 Markdown 工具</h1>
-<p>这是一个<strong>简单</strong>而<em>强大</em>的转换工具。</p>
+        const sampleContent = `<h1>欢迎使用双向转换工具</h1>
+<p>这是一个<strong>简单</strong>而<em>强大</em>的双向转换工具。</p>
 <h2>支持的格式</h2>
 <ul>
 <li>标题（H1-H6）</li>
@@ -302,10 +585,11 @@
 <li>代码块</li>
 <li>表格</li>
 </ul>
-<p>试试粘贴你的富文本内容吧！</p>`;
+<p>试试切换转换方向吧！</p>`;
 
         editor.setHtml(sampleContent);
         convertToMarkdown();
+        }
     </script>
 </body>
 </html>
