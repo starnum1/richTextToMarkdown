@@ -1,0 +1,19 @@
+{
+  "name": "richtext-markdown-converter",
+  "version": "1.0.0",
+  "description": "富文本与Markdown双向转换工具",
+  "main": "index.html",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@wangeditor/editor": "^5.1.23",
+    "marked": "^11.1.1",
+    "turndown": "^7.1.2"
+  },
+  "devDependencies": {
+    "vite": "^4.5.0"
+  }
+}
